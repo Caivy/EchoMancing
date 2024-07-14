@@ -12,3 +12,8 @@ Make sure you have [python3](https://www.python.org/downloads/release/python-312
 - Open a terminal in the directory
 - Run `pip install -r requirements.txt`
 - Main Code is main.py
+
+## Sources
+[Video]()
+<br/>
+[Spreadsheet](https://docs.google.com/spreadsheets/d/1Wixi5VK2EGO1oqbiFDkhRPCYjnhMTRrUPV3ZmynaAaI/edit?gid=413394713#gid=413394713)
