@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import shutil
 import tkinter as tk
 from datetime import datetime
@@ -31,9 +32,11 @@ def log_with_timestamp(message):
 def load_config():
     default_config = {
         "window": {
-            "size": '260x275'
+            "size": '347x300'
         },
-        "TARGET_MINUTES": '7'  # Default target minutes
+        "TARGET_MINUTES": '7',  # Default target minutes
+        "CLICK_INTERVAL": '15'
+        
     }
 
     try:
@@ -59,7 +62,14 @@ def get_current_time():
     current_time = datetime.now()
     return current_time.strftime('%H:%M:%S:%f').split(':')
     
+def resource_path(relative_path):
+    """ Get the absolute path to a resource, works for both development and PyInstaller. """
+    try:
+        base_path = sys._MEIPASS  # Used when running as a bundled exe
+    except AttributeError:
+        base_path = os.path.abspath(".")
 
+    return os.path.join(base_path, relative_path)
 
 class AutoClickerApp:
     def __init__(self, master):
@@ -69,39 +79,51 @@ class AutoClickerApp:
         self.apply_config()
         
         # Load and set the icon
-        self.icon = tk.PhotoImage(file='main.png')
+        self.icon = tk.PhotoImage(file=resource_path('main.png'))
         self.master.iconphoto(True, self.icon)
         
         self.TARGET_MINUTES = self.config['TARGET_MINUTES']
+        self.CLICK_INTERVAL = self.config['CLICK_INTERVAL']
         
         # Create a validation function for digit-only input
-        self.validate_digit_input = master.register(self.validate_digits)
+        # self.validate_digit_input = master.register(self.validate_digits)
 
         # Add Entry for TARGET_MINUTES
         self.minutes_label = ttk.Label(master, text="Target Minutes:")
         self.minutes_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        
-        self.minutes_entry = ttk.Entry(master, validate="key", validatecommand=(self.validate_digit_input, '%P'))
+
+        self.minutes_entry = ttk.Entry(master)
         self.minutes_entry.insert(0, self.TARGET_MINUTES)  # Set initial value
         self.minutes_entry.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-        self.update_button = ttk.Button(master, text="Update Target Minutes", command=self.update_target_minutes)
-        self.update_button.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+        # Add Entry for CLICK_INTERVAL below TARGET_MINUTES
+        self.interval_label = ttk.Label(master, text="Click Interval (seconds):")
+        self.interval_label.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+
+        self.interval_entry = ttk.Entry(master)
+        self.interval_entry.insert(0, str(self.CLICK_INTERVAL))  # Set initial value
+        self.interval_entry.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+
+        # Apply Button for both entries
+        self.apply_button = ttk.Button(master, text="Apply", command=self.apply_settings)
+        self.apply_button.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
         self.toggle_button = ttk.Button(master, text="Enable Clicking", command=self.toggle_clicking)
-        self.toggle_button.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+        self.toggle_button.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
         self.last_click_label = ttk.Label(master, text="Last Click: N/A")
-        self.last_click_label.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+        self.last_click_label.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
         self.time_label = ttk.Label(master, text="")
-        self.time_label.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+        self.time_label.grid(row=5, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
         self.reload_button = ttk.Button(master, text="Reload Config", command=self.reload_config)
-        self.reload_button.grid(row=5, column=0, padx=10, pady=10, sticky="ew")
+        self.reload_button.grid(row=6, column=0, padx=10, pady=10, sticky="ew")
 
         self.quit_button = ttk.Button(master, text="Quit", command=self.quit)
-        self.quit_button.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
+        self.quit_button.grid(row=6, column=1, padx=10, pady=10, sticky="ew")
+
+
         
         style = ttk.Style()
         style.theme_use('clam')
@@ -123,7 +145,6 @@ class AutoClickerApp:
         # Apply the theme to each widget
         self.minutes_label.configure(style='TLabel')
         self.minutes_entry.configure(style='TEntry')
-        self.update_button.configure(style='TButton')
         self.toggle_button.configure(style='TButton')
         self.last_click_label.configure(style='TLabel')
         self.time_label.configure(style='TLabel')
@@ -134,10 +155,14 @@ class AutoClickerApp:
         self.clicking_enabled = False
         self.running = True
 
-        for i in range(6):
-            master.grid_rowconfigure(i, weight=1)
-            master.grid_columnconfigure(0, weight=1)
-            master.grid_columnconfigure(1, weight=1)
+        master.grid_rowconfigure(0, weight=1)
+        master.grid_rowconfigure(1, weight=1)
+        master.grid_rowconfigure(2, weight=1)
+        master.grid_rowconfigure(3, weight=1)
+        master.grid_rowconfigure(4, weight=1)
+        master.grid_rowconfigure(5, weight=1)
+        master.grid_columnconfigure(0, weight=1)
+        master.grid_columnconfigure(1, weight=1)
         
         self.show_disclaimer()
 
@@ -171,8 +196,7 @@ class AutoClickerApp:
         self.apply_config()  # Apply any other window changes if needed
         log_with_timestamp("Config reloaded")
         
-    
-        
+
 
     def update_time(self):
         current_time = get_current_time()
@@ -188,20 +212,33 @@ class AutoClickerApp:
         self.toggle_button.config(text=f"{state.title()} Clicking")
         log_with_timestamp(f"Clicking {state}")
         
-    def validate_digits(self, new_value):
+    #def validate_digits(self, new_value):
         """ Validate input to allow only digits. """
-        if new_value == "" or new_value.isdigit():
-            return True
-        return False
+        #if new_value == "" or new_value.isdigit():
+            #return True
+        #return False
+        
+    def apply_settings(self):
+        """ Update TARGET_MINUTES and CLICK_INTERVAL from the entry fields. """
+        new_minutes = self.minutes_entry.get().strip()  # Get and strip any extra whitespace
+        new_interval = self.interval_entry.get().strip()  # Get and strip any extra whitespace
 
-    def update_target_minutes(self):
-        """ Update TARGET_MINUTES from the entry field. """
-        new_minutes = self.minutes_entry.get()
         if new_minutes:
             log_with_timestamp(f"Updating TARGET_MINUTES to {new_minutes}")
             self.TARGET_MINUTES = new_minutes
             self.config['TARGET_MINUTES'] = new_minutes  # Update stored config
-            log_with_timestamp("Config reloaded")
+
+        if new_interval:
+            try:
+                new_interval_value = int(new_interval)
+                log_with_timestamp(f"Updating CLICK_INTERVAL to {new_interval_value}")
+                self.CLICK_INTERVAL = new_interval_value
+                self.config['CLICK_INTERVAL'] = self.CLICK_INTERVAL  # Update stored config
+            except ValueError:
+                log_with_timestamp(f"Invalid CLICK_INTERVAL value: {new_interval}")
+
+        log_with_timestamp("Settings applied")
+
 
     def quit(self):
         self.running = False
@@ -239,7 +276,7 @@ def main():
                         # Check if the minutes contain '7'
                         if app.TARGET_MINUTES in m and app.clicking_enabled:
                             # Check if seconds are 0, 15, 30, or 45
-                            if s in ['00', '15', '30', '45'] or ms <= 50:
+                            if int(s) % app.CLICK_INTERVAL == 0 or ms <= 50:
                                 click()  # Perform click
                                 click_time = f"{h}:{m}:{s}:{ms}"
                                 log_with_timestamp(f"Clicked at {click_time}")
